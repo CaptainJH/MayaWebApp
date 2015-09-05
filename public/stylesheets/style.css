@@ -1,0 +1,20 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+
+circle {
+fill: pink;
+stroke: black;
+stroke-width: 1px;
+}
+circle.active {
+fill: red;
+}
+circle.inactive {
+fill: gray;
+}
