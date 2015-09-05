@@ -7,60 +7,48 @@ function createSoccerViz() {
 }
 
 function overallTeamViz(incomingData) {
-	d3.select("svg")
-		.append("g")
-		.attr("id", "teamsG")
-		.attr("transform", "translate(50,300)")
-		.selectAll("g")
-		.data(incomingData)
-		.enter()
-		.append("g")
-		.attr("class", "overallG")
-		.attr("transform", function (d,i) {return "translate(" + (i * 50) + ", 0)"});
-		
-	var teamG = d3.selectAll("g.overallG");
-		
-	teamG
-		.append("circle")
-		.attr("r", 20)
-		.style("fill", "pink")
-		.style("stroke", "black")
-		.style("stroke-width", "1px");
 	
-	teamG
-		.append("text")
-		.style("text-anchor", "middle")
-		.attr("y", 30)
-		.style("font-size", "10px")
-		.text(function(d) {return d.team});
+	var scatterData = [{friends: 5, salary: 22000},
+		{friends: 3, salary: 18000}, {friends: 10, salary: 88000},
+		{friends: 0, salary: 180000}, {friends: 27, salary: 56000},
+		{friends: 8, salary: 74000}];
 		
-	var dataKeys = d3.keys(incomingData[0])
-		.filter(function (el) {return el != "team" && el != "region"});  
-	
-	d3.select("#controls").selectAll("button").data(dataKeys).enter().append("button").attr("class", "teams")
-		.on("click", buttonClick)
-		.html(function(d) {return d});
+		 
+	var xExtent = d3.extent(scatterData, function(d) {
+                 return d.salary;
+              });
+	var yExtent = d3.extent(scatterData, function(d) {
+                 return d.friends;
+              });
+			  
+	var xScale = d3.scale.linear().domain(xExtent).range([0,500]);
+	var yScale = d3.scale.linear().domain(yExtent).range([0,500]);
+	d3.select("svg").selectAll("circle")
+			.data(scatterData).enter().append("circle")
+			.attr("r", 5).attr("cx", function(d) {
+					return xScale(d.salary);
+			}).attr("cy", function(d) {
+					return yScale(d.friends);
+					});
+					
+	var yAxis = d3.svg.axis().scale(yScale).orient("right");
+	d3.select("svg").append("g").attr("id", "yAxisG").call(yAxis);
+	var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+	d3.select("svg").append("g").attr("id", "xAxisG").call(xAxis);
 
-	function buttonClick(datapoint) {
-		var maxValue = d3.max(incomingData, 
-			function(d) {
-				return parseFloat(d[datapoint])
-			});
-		
-		var radiusScale = d3.scale.linear().domain([0,maxValue]).range([2,20]);
- 		d3.selectAll("g.overallG")
-			.select("circle")
-			.transition().duration(300)
-			.attr("r", function(d) {return radiusScale(d[datapoint])})
-	}
-	
-	
-	teamG.on("mouseover", highlightRegion);
-	teamG.on("mouseout", function() {d3.selectAll("g.overallG").select("circle").style("fill", "pink")});
 
-	function highlightRegion(d) {
-		d3.selectAll("g.overallG").select("circle").style("fill", function(p) {
-			return p.region == d.region ? "red" : "gray"
+	var lineVar = d3.svg.line()
+		.x(function(d) {
+			return xScale(d.salary);
 		})
-	}
+		.y(function(d) {
+		return yScale(d.friends);
+		});
+		
+	d3.select("svg")
+		.append("path")
+		.attr("d", lineVar(scatterData))
+		.attr("fill", "none")
+		.attr("stroke", "darkred")
+		.attr("stroke-width", 2);
  }
