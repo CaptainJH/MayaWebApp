@@ -1,60 +1,93 @@
 
 function createSoccerViz() {
-	d3.csv('/data/movies.csv', function(data){
-		console.log(data);
-		overallTeamViz(data);
+	
+	d3.csv('/data/nodelist.csv', function(nodeDataIn){
+		var nodeData = nodeDataIn;
+		d3.csv('/data/edgelist.csv', function(edgeDataIn){
+			var edgeData = edgeDataIn;
+			createForceLayout(nodeData, edgeData);
+		})
 	});
+
 }
 
-function overallTeamViz(incomingData) {
+function createForceLayout(nodeData, edgeData) {
+	console.log(nodeData);
+	console.log(edgeData);
 	
-	var fillScale = d3.scale.linear()
-            .domain([0,5])
-            .range(["lightgray","black"]);
-	var n = 0;
-			  
-	var xScale = d3.scale.linear().domain([ 1, 8 ]).range([ 20, 470 ]);
-	var yScale = d3.scale.linear().domain([ 0, 100 ]).range([ 480, 20 ]);	
-	
-	for(x in incomingData[0])
+	var nodeHash = {};
+	for(x in nodeData)
 	{
-		if( x != "day")
-		{
-			var movieArea = d3.svg.area().x(function(d){
-				return xScale(d.day);
-			}).y(function(d){
-				return yScale(simpleStacking(d, x))
-			}).y0(function(d){
-				return yScale(simpleStacking(d, x) - d[x]);
-			}).interpolate("basis");
-			
-			d3.select("svg")
-				.append("path")
-				.style("id", x + "Area")
-				.attr("d", movieArea(incomingData))
-				.attr("fill", "darkgray")
-				.attr("stroke", "lightgray")
-				.attr("stroke-width", 2)
-				.style("opacity", .5);
-				
-		}
+		nodeHash[nodeData[x].id] = nodeData[x];
+	}
+	for(x in edgeData)
+	{
+		edgeData[x].weight = parseInt(edgeData[x].weight);
+		edgeData[x].source = nodeHash[edgeData[x].source];
+		edgeData[x].target = nodeHash[edgeData[x].target];
 	}
 	
-	function simpleStacking(incomingData, incomingAttribute)
-	{
-		var newHeight = 0;
+	var weightScale = d3.scale.linear()
+		.domain(d3.extent(edgeData, function(d){ return d.weight; }))
+		.range([0.1, 1]);
 		
-		for(x in incomingData)
-		{
-			if(x != "day")
-			{
-				newHeight += parseInt(incomingData[x]);
-				if(x == incomingAttribute)
-				{
-					break;
-				}
-			}
-		}
-		return newHeight;
+	var force = d3.layout.force().charge(-1000)
+		.size([500, 500])
+		.nodes(nodeData)
+		.links(edgeData)
+		.on("tick", forceTick);
+		
+	d3.select("svg").selectAll("line.link")
+		.data(edgeData, function(d) { return d.source.id + "-" + d.target.id;})
+		.enter()
+		.append("line")
+		.attr("class", "link")
+		.style("stroke", "black")
+		.style("opacity", 0.5)
+		.style("stroke-width", function(d){ return d.weight});
+		
+	var nodeEnter = d3.select("svg").selectAll("g.node")
+		.data(nodeData, function(d){ return d.id})
+		.enter()
+		.append("g")
+		.attr("class", "node");
+		
+	nodeEnter.append("circle")
+		.attr("r", 5)
+		.style("fill", "lightgray")
+		.style("stroke", "black")
+		.style("stroke-width", "1px");
+		
+	nodeEnter.append("text")
+		.style("text-anchor", "middle")
+		.attr("y", 15)
+		.text(function(d) { return d.id;});
+		
+	var marker = d3.select("svg").append('defs')
+		.append('marker')
+		.attr("id", "Triangle")
+		.attr("refX", 12)
+		.attr("refY", 6)
+		.attr("markerUnits", 'userSpaceOnUse')
+		.attr("markerWidth", 12)
+		.attr("markerHeight", 18)
+		.attr("orient", 'auto')
+		.append('path')
+		.attr("d", 'M 0 0 12 6 0 12 3 6');
+	d3.selectAll("line").attr("marker-end", "url(#Triangle)");
+	
+	force.start();
+	
+	function forceTick() {
+		d3.selectAll("line.link")
+			.attr("x1", function(d) { return d.source.x;})
+			.attr("x2", function(d) { return d.target.x;})
+			.attr("y1", function(d) { return d.source.y;})
+			.attr("y2", function(d) { return d.target.y;});
+			
+		d3.selectAll("g.node")
+			.attr("transform", function(d){
+				return "translate("+ d.x + "," + d.y + ")";
+			});
 	}
  }
