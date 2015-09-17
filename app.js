@@ -60,6 +60,18 @@ app.use(function(err, req, res, next) {
 module.exports = app;
 
 
+var WebSocketServer = require('ws').Server;
+var wss = new WebSocketServer({port:3001});
+wss.on('connection', function(ws){
+  ws.send('DONE');
+  
+  ws.on('message', function(message){
+    console.log('received: %s', message);
+  })
+});
+
+
+
 var zmq = require('zmq');
 
 // socket to talk to clients
@@ -67,19 +79,18 @@ var responder = zmq.socket('rep');
 
 responder.on('message', function(request) {
   console.log("Received request: [", request.toString(), "]");
+  
+  wss.clients.forEach(function each(client){
+    client.send(request.toString());
+  });
 
-  // do some 'work'
-  setTimeout(function() {
-
-    // send reply back to client.
-    responder.send("World");
-  }, 1000);
+  responder.send("OK");
 });
 
-responder.bind('tcp://*:5555', function(err) {
+responder.bind('tcp://*:6292', function(err) {
   if (err) {
     console.log(err);
   } else {
-    console.log("Listening on 5555…");
+    console.log("Listening on 6292…");
   }
 });

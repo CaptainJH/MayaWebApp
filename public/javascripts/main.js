@@ -1,6 +1,46 @@
 
-function createSoccerViz() {
+function buildNodeData(nodes) {
+	var result = [];
 	
+	for(n in nodes)
+	{
+		if(nodes[n] !== '')
+		{
+			var obj = {
+				id : nodes[n],
+			};
+			
+			result.push(obj);
+		}
+	}
+	
+	return result;
+}
+
+function buildEdgeData(edges) {
+	var result = [];
+	
+	for(e in edges)
+	{	
+		if(edges[e] !== '')
+		{
+			var ele = edges[e].split('-');
+			var obj = {
+				weight : 1,
+				source : ele[0],
+				target : ele[1],	
+			};
+			
+			result.push(obj);
+		}
+	}
+	
+	return result;
+}
+
+function MainInit() {
+
+/*	
 	d3.csv('/data/nodelist.csv', function(nodeDataIn){
 		var nodeData = nodeDataIn;
 		d3.csv('/data/edgelist.csv', function(edgeDataIn){
@@ -8,6 +48,42 @@ function createSoccerViz() {
 			createForceLayout(nodeData, edgeData);
 		})
 	});
+*/
+	var text = 	"10|initialShadingGroup,lightLinker1,initialMaterialInfo,renderPartition,lambert1,pSphereShape1,polySphere1,;initialShadingGroup-lightLinker1,initialShadingGroup-initialMaterialInfo,initialShadingGroup-renderPartition,initialShadingGroup-lambert1,initialShadingGroup-pSphereShape1,pSphereShape1-polySphere1,";
+	
+	var textArray = text.split('|');
+	if(textArray[0] === "10")
+	{
+		var content = textArray[1].split(';');
+		var nodes = content[0].split(',');
+		var edges = content[1].split(',');
+		
+		var nodeData = buildNodeData(nodes);
+		var edgeData = buildEdgeData(edges);
+		
+		createForceLayout(nodeData, edgeData);
+
+	}
+	
+	var url = 'ws://localhost:3001';
+	var socket = new WebSocket(url);
+	socket.onopen = function(ev) {
+		console.log('onopen');
+		//console.log(ev);
+	};
+	
+	socket.onclose = function(ev) {
+		console.log('onclose');
+		//console.log(ev);
+	};
+	
+	socket.onmessage = function(ev) {
+		//console.log('onmessage');
+		//console.log(ev);
+		console.log(ev.data);
+		
+		
+	};
 
 }
 
