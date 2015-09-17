@@ -38,6 +38,8 @@ function buildEdgeData(edges) {
 	return result;
 }
 
+var Force = null;
+
 function MainInit() {
 	
 	var url = 'ws://localhost:3001';
@@ -55,7 +57,7 @@ function MainInit() {
 	socket.onmessage = function(ev) {
 		//console.log('onmessage');
 		//console.log(ev);
-		console.log(ev.data);
+		//console.log(ev.data);
 		
 		var texArray = ev.data.split('|');
 		if(texArray[0] === "10")
@@ -68,17 +70,14 @@ function MainInit() {
 }
 
 function clear() {
-	d3.select("svg").remove();
-	d3.select("#viz").append("svg")
-		.style("width", "600px")
-		.style("height", "1000px")
-		.style("border", "1px")
-		;
+
+	d3.select("#controls").selectAll("button").remove();
 }
 
 function createForceLayout(nodeData, edgeData) {
-	console.log(nodeData);
-	console.log(edgeData);
+	//console.log(nodeData);
+	//console.log(edgeData);
+		
 	
 	var nodeHash = {};
 	for(x in nodeData)
@@ -95,27 +94,51 @@ function createForceLayout(nodeData, edgeData) {
 	var weightScale = d3.scale.linear()
 		.domain(d3.extent(edgeData, function(d){ return d.weight; }))
 		.range([0.1, 1]);
+	
+	if(Force === null)
+	{
+		Force = d3.layout.force().charge(-1200)
+			.size([1500, 1000])
+			.nodes(nodeData)
+			.links(edgeData)
+			.on("tick", forceTick);
+	}
+	else
+	{
+		Force.nodes(nodeData)
+			.links(edgeData)
+			;
+	}
 		
-	var force = d3.layout.force().charge(-1000)
-		.size([500, 500])
-		.nodes(nodeData)
-		.links(edgeData)
-		.on("tick", forceTick);
+	var linkSel = d3.select("svg").selectAll("line.link")
+		.data(edgeData, function(d) { return d.source.id + "-" + d.target.id;});
 		
-	d3.select("svg").selectAll("line.link")
-		.data(edgeData, function(d) { return d.source.id + "-" + d.target.id;})
-		.enter()
+	linkSel.enter()
 		.append("line")
 		.attr("class", "link")
 		.style("stroke", "black")
 		.style("opacity", 0.5)
-		.style("stroke-width", function(d){ return d.weight});
+		.style("stroke-width", function(d){ return d.weight})
+		;
 		
-	var nodeEnter = d3.select("svg").selectAll("g.node")
+	linkSel.exit()
+		.transition()
+		.duration(1000)
+		.style("opacity", 0)
+		.remove()
+		;
+		
+		
+	var nodeSel = d3.select("svg").selectAll("g.node")
 		.data(nodeData, function(d){ return d.id})
+		;
+		
+		
+	var nodeEnter = nodeSel 
 		.enter()
 		.append("g")
-		.attr("class", "node");
+		.attr("class", "node")
+		;
 		
 	nodeEnter.append("circle")
 		.attr("r", 5)
@@ -127,6 +150,13 @@ function createForceLayout(nodeData, edgeData) {
 		.style("text-anchor", "middle")
 		.attr("y", 15)
 		.text(function(d) { return d.id;});
+		
+	nodeSel.exit()
+		.transition()
+		.duration(1000)
+		.style("opacity", 0)
+		.remove()
+		;
 		
 	var marker = d3.select("svg").append('defs')
 		.append('marker')
@@ -140,10 +170,46 @@ function createForceLayout(nodeData, edgeData) {
 		.append('path')
 		.attr("d", 'M 0 0 12 6 0 12 3 6');
 	d3.selectAll("line").attr("marker-end", "url(#Triangle)");
+
 	
-	force.start();
+	d3.select("#controls").append("button")
+		.on("click", normalSize).html("Normal");
+	function normalSize() {
+		Force.stop();
+		d3.selectAll("circle")
+			.attr("r", 5)
+			.style("fill", "lightgray")
+			;	
+	}
+	
+	d3.select("#controls").append("button")
+		.on("click", sizeByDegree).html("Degree Size");
+	function sizeByDegree() {
+		Force.stop();
+		var ar = [];
+		d3.selectAll("circle")
+			.attr("r", function(d) {
+				ar.push(d.weight * 2); 
+				return d.weight * 2;
+			})
+			;
+		var colorScale = d3.scale.linear().domain(d3.extent(ar)).range(["lightgray", "red"]);
+		d3.selectAll("circle")
+			.style("fill", function(d){
+				return colorScale(d.weight * 2);
+			});
+	}
+	
+	d3.selectAll("g.node").call(Force.drag()); // enable node dragging
+	d3.selectAll("g.node").on("click", function(d){
+		d3.select(this).select("circle").style("stroke-width", 4);
+		d.fixed = true;			
+	});
+	
+	Force.start();
 	
 	function forceTick() {
+			
 		d3.selectAll("line.link")
 			.attr("x1", function(d) { return d.source.x;})
 			.attr("x2", function(d) { return d.target.x;})
