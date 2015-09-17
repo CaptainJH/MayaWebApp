@@ -39,31 +39,6 @@ function buildEdgeData(edges) {
 }
 
 function MainInit() {
-
-/*	
-	d3.csv('/data/nodelist.csv', function(nodeDataIn){
-		var nodeData = nodeDataIn;
-		d3.csv('/data/edgelist.csv', function(edgeDataIn){
-			var edgeData = edgeDataIn;
-			createForceLayout(nodeData, edgeData);
-		})
-	});
-*/
-	var text = 	"10|initialShadingGroup,lightLinker1,initialMaterialInfo,renderPartition,lambert1,pSphereShape1,polySphere1,;initialShadingGroup-lightLinker1,initialShadingGroup-initialMaterialInfo,initialShadingGroup-renderPartition,initialShadingGroup-lambert1,initialShadingGroup-pSphereShape1,pSphereShape1-polySphere1,";
-	
-	var textArray = text.split('|');
-	if(textArray[0] === "10")
-	{
-		var content = textArray[1].split(';');
-		var nodes = content[0].split(',');
-		var edges = content[1].split(',');
-		
-		var nodeData = buildNodeData(nodes);
-		var edgeData = buildEdgeData(edges);
-		
-		createForceLayout(nodeData, edgeData);
-
-	}
 	
 	var url = 'ws://localhost:3001';
 	var socket = new WebSocket(url);
@@ -82,9 +57,23 @@ function MainInit() {
 		//console.log(ev);
 		console.log(ev.data);
 		
+		var texArray = ev.data.split('|');
+		if(texArray[0] === "10")
+		{
+			onMessage10(texArray[1]);
+		}
 		
 	};
 
+}
+
+function clear() {
+	d3.select("svg").remove();
+	d3.select("#viz").append("svg")
+		.style("width", "600px")
+		.style("height", "1000px")
+		.style("border", "1px")
+		;
 }
 
 function createForceLayout(nodeData, edgeData) {
@@ -166,4 +155,19 @@ function createForceLayout(nodeData, edgeData) {
 				return "translate("+ d.x + "," + d.y + ")";
 			});
 	}
+ }
+ 
+ 
+ function onMessage10(text) {
+	clear();
+	
+	var content = text.split(';');
+	var nodes = content[0].split(',');
+	var edges = content[1].split(',');
+	
+	var nodeData = buildNodeData(nodes);
+	var edgeData = buildEdgeData(edges);
+	
+	createForceLayout(nodeData, edgeData);
+
  }
