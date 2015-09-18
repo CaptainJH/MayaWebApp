@@ -1,3 +1,4 @@
+var Force = null;
 
 function buildNodeData(nodes) {
 	var result = [];
@@ -38,7 +39,31 @@ function buildEdgeData(edges) {
 	return result;
 }
 
-var Force = null;
+function NodeIDExistInArray(nid, arr) {
+	for(var i in arr)
+	{
+		if(nid === arr[i].id)
+			return true;
+	}
+	
+	return false;
+}
+
+function NodeIDExistInForceNodes(nid) {
+	var nodes = Force.nodes();
+	return NodeIDExistInArray(nid, nodes);
+}
+
+function GetNodeFromForceNodesByID(nid) {
+	var nodes = Force.nodes();
+	for(var i in nodes)
+	{
+		if(nid === nodes[i].id)
+			return nodes[i];
+	}
+	
+	return null;
+}
 
 function MainInit() {
 	
@@ -104,20 +129,77 @@ function createForceLayout(nodeData, edgeData) {
 			.on("tick", forceTick);
 	}
 	else
-	{
-		Force.nodes(nodeData)
-			.links(edgeData)
-			;
+	{	
+		/// update for new nodes
+		for(var n in nodeData)
+		{
+			if(!NodeIDExistInForceNodes(nodeData[n].id))
+			{
+				var newNodeID = nodeData[n].id;
+				var newNode = {id: newNodeID, x: 100, y: 100};
+				Force.nodes().push(newNode);
+				
+				for(var l in edgeData)
+				{
+					var edge = edgeData[l];
+					if(edge.source.id === newNodeID
+						||
+						edge.target.id === newNodeID)
+						{
+							if(NodeIDExistInForceNodes(edge.source.id)
+								&& NodeIDExistInForceNodes(edge.target.id))
+							{
+								if(newNodeID === edge.source.id)
+								{
+									var otherNode = GetNodeFromForceNodesByID(edge.target.id);
+									newNode.x = otherNode.x;
+									newNode.y = otherNode.y;
+									Force.links().push({source: newNode, target: otherNode});
+								}
+								else if(newNodeID === edge.target.id)
+								{
+									var otherNode = GetNodeFromForceNodesByID(edge.source.id);
+									Force.links().push({source: otherNode, target: newNode});
+								}
+							}
+						}
+				}
+				
+			}
+		}
+		
+		/// update for removed nodes
+		var updatedNodes = [];
+		var updatedLinks = [];
+		Force.nodes().forEach(function(n) {
+			if(NodeIDExistInArray(n.id, nodeData))
+			{
+				updatedNodes.push(n);
+			}
+		});
+		Force.links().forEach(function(l) {
+			var srcID = l.source.id;
+			var dstID = l.target.id;
+			if(NodeIDExistInArray(srcID, updatedNodes)
+				&& NodeIDExistInArray(dstID, updatedNodes))
+			{
+				updatedLinks.push(l);
+			}
+		});
+		Force.nodes(updatedNodes);
+		Force.links(updatedLinks);
+		
+
 	}
 		
 	var linkSel = d3.select("svg").selectAll("line.link")
-		.data(edgeData, function(d) { return d.source.id + "-" + d.target.id;});
+		.data(Force.links(), function(d) { return d.source.id + "-" + d.target.id;});
 		
 	linkSel.enter()
 		.append("line")
 		.attr("class", "link")
-		.style("stroke", "black")
-		.style("opacity", 0.5)
+		.style("stroke", "#ccc")
+		.style("opacity", 0.8)
 		.style("stroke-width", function(d){ return d.weight})
 		;
 		
@@ -130,7 +212,7 @@ function createForceLayout(nodeData, edgeData) {
 		
 		
 	var nodeSel = d3.select("svg").selectAll("g.node")
-		.data(nodeData, function(d){ return d.id})
+		.data(Force.nodes(), function(d){ return d.id})
 		;
 		
 		
@@ -200,11 +282,15 @@ function createForceLayout(nodeData, edgeData) {
 			});
 	}
 	
-	d3.selectAll("g.node").call(Force.drag()); // enable node dragging
 	d3.selectAll("g.node").on("click", function(d){
 		d3.select(this).select("circle").style("stroke-width", 4);
 		d.fixed = true;			
-	});
+	})
+	.on("dblclick", function(d){
+		d3.select(this).select("circle").style("stroke-width", 1);
+		d.fixed = false;
+	})
+	.call(Force.drag()); // enable node dragging
 	
 	Force.start();
 	
