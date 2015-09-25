@@ -1,4 +1,5 @@
 var Force = null;
+var DGAll = {};
 
 function buildNodeData(nodes) {
 	var result = [];
@@ -7,8 +8,13 @@ function buildNodeData(nodes) {
 	{
 		if(nodes[n] !== '')
 		{
+			var temp = nodes[n].split('#');
+			var color = "black";
+			if(temp.length > 1)
+				color = "red";
 			var obj = {
-				id : nodes[n],
+				id : temp[0],
+				col : color
 			};
 			
 			result.push(obj);
@@ -67,7 +73,8 @@ function GetNodeFromForceNodesByID(nid) {
 
 function MainInit() {
 	
-	var url = 'ws://localhost:3001';
+	//var url = 'ws://localhost:3001';
+	var url = 'ws://10.148.207.170:3001';
 	var socket = new WebSocket(url);
 	socket.onopen = function(ev) {
 		console.log('onopen');
@@ -102,22 +109,25 @@ function clear() {
 function createForceLayout(nodeData, edgeData) {
 	//console.log(nodeData);
 	//console.log(edgeData);
-		
+	
+	var edgeDataCpy = edgeData.slice();	
 	
 	var nodeHash = {};
 	for(x in nodeData)
 	{
 		nodeHash[nodeData[x].id] = nodeData[x];
 	}
-	for(x in edgeData)
+	for(x in edgeDataCpy)
 	{
-		edgeData[x].weight = parseInt(edgeData[x].weight);
-		edgeData[x].source = nodeHash[edgeData[x].source];
-		edgeData[x].target = nodeHash[edgeData[x].target];
+		var ele = {};
+		ele.weight = parseInt(edgeData[x].weight);
+		ele.source = nodeHash[edgeData[x].source];
+		ele.target = nodeHash[edgeData[x].target];
+		edgeDataCpy[x] = ele;
 	}
 	
 	var weightScale = d3.scale.linear()
-		.domain(d3.extent(edgeData, function(d){ return d.weight; }))
+		.domain(d3.extent(edgeDataCpy, function(d){ return d.weight; }))
 		.range([0.1, 1]);
 	
 	if(Force === null)
@@ -125,8 +135,36 @@ function createForceLayout(nodeData, edgeData) {
 		Force = d3.layout.force().charge(-1200)
 			.size([1500, 1000])
 			.nodes(nodeData)
-			.links(edgeData)
+			.links(edgeDataCpy)
 			.on("tick", forceTick);
+			
+		d3.select("#controls").append("button")
+			.on("click", normalSize).html("Normal");
+		function normalSize() {
+			Force.stop();
+			d3.selectAll("circle")
+				.attr("r", 5)
+				.style("fill", "lightgray")
+				;	
+		}
+	
+		d3.select("#controls").append("button")
+			.on("click", sizeByDegree).html("Degree Size");
+		function sizeByDegree() {
+			Force.stop();
+			var ar = [];
+			d3.selectAll("circle")
+				.attr("r", function(d) {
+					ar.push(d.weight * 2); 
+					return d.weight * 2;
+				})
+				;
+			var colorScale = d3.scale.linear().domain(d3.extent(ar)).range(["lightgray", "red"]);
+			d3.selectAll("circle")
+				.style("fill", function(d){
+					return colorScale(d.weight * 2);
+				});
+		}
 	}
 	else
 	{	
@@ -136,12 +174,13 @@ function createForceLayout(nodeData, edgeData) {
 			if(!NodeIDExistInForceNodes(nodeData[n].id))
 			{
 				var newNodeID = nodeData[n].id;
-				var newNode = {id: newNodeID, x: 100, y: 100};
+				var color = nodeData[n].col;
+				var newNode = {id: newNodeID, col: color, x: 100, y: 100};
 				Force.nodes().push(newNode);
 				
-				for(var l in edgeData)
+				for(var l in edgeDataCpy)
 				{
-					var edge = edgeData[l];
+					var edge = edgeDataCpy[l];
 					if(edge.source.id === newNodeID
 						||
 						edge.target.id === newNodeID)
@@ -231,6 +270,7 @@ function createForceLayout(nodeData, edgeData) {
 	nodeEnter.append("text")
 		.style("text-anchor", "middle")
 		.attr("y", 15)
+		.style("fill", function(d) { console.log(d); return d.col; })
 		.text(function(d) { return d.id;});
 		
 	nodeSel.exit()
@@ -252,35 +292,6 @@ function createForceLayout(nodeData, edgeData) {
 		.append('path')
 		.attr("d", 'M 0 0 12 6 0 12 3 6');
 	d3.selectAll("line").attr("marker-end", "url(#Triangle)");
-
-	
-	d3.select("#controls").append("button")
-		.on("click", normalSize).html("Normal");
-	function normalSize() {
-		Force.stop();
-		d3.selectAll("circle")
-			.attr("r", 5)
-			.style("fill", "lightgray")
-			;	
-	}
-	
-	d3.select("#controls").append("button")
-		.on("click", sizeByDegree).html("Degree Size");
-	function sizeByDegree() {
-		Force.stop();
-		var ar = [];
-		d3.selectAll("circle")
-			.attr("r", function(d) {
-				ar.push(d.weight * 2); 
-				return d.weight * 2;
-			})
-			;
-		var colorScale = d3.scale.linear().domain(d3.extent(ar)).range(["lightgray", "red"]);
-		d3.selectAll("circle")
-			.style("fill", function(d){
-				return colorScale(d.weight * 2);
-			});
-	}
 	
 	d3.selectAll("g.node").on("click", function(d){
 		d3.select(this).select("circle").style("stroke-width", 4);
@@ -314,12 +325,28 @@ function createForceLayout(nodeData, edgeData) {
 	clear();
 	
 	var content = text.split(';');
-	var nodes = content[0].split(',');
-	var edges = content[1].split(',');
+	var key = content[0];
+	var nodes = content[1].split(',');
+	var edges = content[2].split(',');
 	
 	var nodeData = buildNodeData(nodes);
 	var edgeData = buildEdgeData(edges);
 	
-	createForceLayout(nodeData, edgeData);
+	var v = DGAll[key];
+	if(v == null) {
+		
+		DGAll[key] = {nodes: nodeData, edges: edgeData};
+		d3.select("#dgList").append("button")
+			.on("click", onClickListItem).html(key);
+		function onClickListItem() {
+			var key = this.outerText;
+			var nodes = DGAll[key].nodes;
+			var edges = DGAll[key].edges;
+			console.log(nodes);
+			console.log(edges);
+			createForceLayout(nodes, edges);
+		}
+	}
+	//createForceLayout(nodeData, edgeData);
 
  }
