@@ -110,12 +110,13 @@ function createForceLayout(nodeData, edgeData) {
 	//console.log(nodeData);
 	//console.log(edgeData);
 	
+	var nodeDataCpy = nodeData.slice();
 	var edgeDataCpy = edgeData.slice();	
 	
 	var nodeHash = {};
-	for(x in nodeData)
+	for(x in nodeDataCpy)
 	{
-		nodeHash[nodeData[x].id] = nodeData[x];
+		nodeHash[nodeDataCpy[x].id] = nodeDataCpy[x];
 	}
 	for(x in edgeDataCpy)
 	{
@@ -134,7 +135,7 @@ function createForceLayout(nodeData, edgeData) {
 	{
 		Force = d3.layout.force().charge(-1200)
 			.size([1500, 1000])
-			.nodes(nodeData)
+			.nodes(nodeDataCpy)
 			.links(edgeDataCpy)
 			.on("tick", forceTick);
 			
@@ -169,12 +170,12 @@ function createForceLayout(nodeData, edgeData) {
 	else
 	{	
 		/// update for new nodes
-		for(var n in nodeData)
+		for(var n in nodeDataCpy)
 		{
-			if(!NodeIDExistInForceNodes(nodeData[n].id))
+			if(!NodeIDExistInForceNodes(nodeDataCpy[n].id))
 			{
-				var newNodeID = nodeData[n].id;
-				var color = nodeData[n].col;
+				var newNodeID = nodeDataCpy[n].id;
+				var color = nodeDataCpy[n].col;
 				var newNode = {id: newNodeID, col: color, x: 100, y: 100};
 				Force.nodes().push(newNode);
 				
@@ -211,7 +212,7 @@ function createForceLayout(nodeData, edgeData) {
 		var updatedNodes = [];
 		var updatedLinks = [];
 		Force.nodes().forEach(function(n) {
-			if(NodeIDExistInArray(n.id, nodeData))
+			if(NodeIDExistInArray(n.id, nodeDataCpy))
 			{
 				updatedNodes.push(n);
 			}
