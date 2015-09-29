@@ -1,79 +1,10 @@
 var Force = null;
 var DGAll = {};
 
-function buildNodeData(nodes) {
-	var result = [];
-	
-	for(n in nodes)
-	{
-		if(nodes[n] !== '')
-		{
-			var temp = nodes[n].split('#');
-			var color = "black";
-			if(temp.length > 1)
-				color = "red";
-			var obj = {
-				id : temp[0],
-				col : color
-			};
-			
-			result.push(obj);
-		}
-	}
-	
-	return result;
-}
-
-function buildEdgeData(edges) {
-	var result = [];
-	
-	for(e in edges)
-	{	
-		if(edges[e] !== '')
-		{
-			var ele = edges[e].split('-');
-			var obj = {
-				weight : 1,
-				source : ele[0],
-				target : ele[1],	
-			};
-			
-			result.push(obj);
-		}
-	}
-	
-	return result;
-}
-
-function NodeIDExistInArray(nid, arr) {
-	for(var i in arr)
-	{
-		if(nid === arr[i].id)
-			return true;
-	}
-	
-	return false;
-}
-
-function NodeIDExistInForceNodes(nid) {
-	var nodes = Force.nodes();
-	return NodeIDExistInArray(nid, nodes);
-}
-
-function GetNodeFromForceNodesByID(nid) {
-	var nodes = Force.nodes();
-	for(var i in nodes)
-	{
-		if(nid === nodes[i].id)
-			return nodes[i];
-	}
-	
-	return null;
-}
-
 function MainInit() {
 	
 	//var url = 'ws://localhost:3001';
+	// for remote access
 	var url = 'ws://10.148.207.170:3001';
 	var socket = new WebSocket(url);
 	socket.onopen = function(ev) {
@@ -114,11 +45,11 @@ function createForceLayout(nodeData, edgeData) {
 	var edgeDataCpy = edgeData.slice();	
 	
 	var nodeHash = {};
-	for(x in nodeDataCpy)
+	for(var x in nodeDataCpy)
 	{
 		nodeHash[nodeDataCpy[x].id] = nodeDataCpy[x];
 	}
-	for(x in edgeDataCpy)
+	for(var x in edgeDataCpy)
 	{
 		var ele = {};
 		ele.weight = parseInt(edgeData[x].weight);
@@ -271,7 +202,7 @@ function createForceLayout(nodeData, edgeData) {
 	nodeEnter.append("text")
 		.style("text-anchor", "middle")
 		.attr("y", 15)
-		.style("fill", function(d) { console.log(d); return d.col; })
+		.style("fill", function(d) { return d.col; })
 		.text(function(d) { return d.id;});
 		
 	nodeSel.exit()
@@ -347,6 +278,13 @@ function createForceLayout(nodeData, edgeData) {
 			console.log(edges);
 			createForceLayout(nodes, edges);
 		}
+	}
+	else
+	{
+		var nodes = DGAll[key].nodes;
+		var edges = DGAll[key].edges;
+		
+		MergeTwoDGs(nodeData, edgeData, nodes, edges);
 	}
 	//createForceLayout(nodeData, edgeData);
 
