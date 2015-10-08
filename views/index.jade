@@ -1,9 +1,14 @@
-extends layout
-
-block content
-  h1= title
-  p Welcome to #{title}
-  div(id="viz")
-    svg(style="width:1500px;height:1000px;border:1px lightgray solid;")
-  div(id="controls")
-  div(id="dgList")
+doctype html
+html
+  head
+    title= title
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    script(src='/javascripts/d3.min.js', type='text/JavaScript') 
+    script(src='/javascripts/d3_playground.js', type='text/JavaScript')
+  body
+    h1= title
+    p Welcome to #{title}
+    div(id="viz")
+      svg(style="width:640px;height:480px;border:1px lightgray solid;")
+    div(id="controls")
+    div(id="dgList")
